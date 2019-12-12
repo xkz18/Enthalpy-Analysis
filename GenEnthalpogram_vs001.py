@@ -466,8 +466,8 @@ class Enthalpogram(object):
         #print(V_stock)
 
         ###Generate the enthalpogram
-        #H_conc_plot = (np.array(H_conc[1:])-np.array(H_conc[:-1])-np.array(H_stock[:-1]))/n_surf[:-1]
-        H_conc_plot = (np.array(H_conc[1:])-np.array(H_conc[:-1]))/n_surf[:-1]
+        H_conc_plot = (np.array(H_conc[1:])-np.array(H_conc[:-1])-np.array(H_stock[:-1]))/n_surf[:-1]
+        H_conc_plot_1 = (np.array(H_conc[1:])-np.array(H_conc[:-1]))/n_surf[:-1]
         #H_dict["H_output"]= [self.MicelleStats["c_Stot"],H_conc,n_surf]
         #print("H_conc_2",H_conc[-2])
         #print("H_conc_1",H_conc)
@@ -498,6 +498,7 @@ class Enthalpogram(object):
         #print(self.MicelleStats["c_tot"])
         #print(H_dict["enthalpogram"]["c_tot"] )
         H_dict["enthalpogram"]["H_plot"] = H_conc_plot*self.Ttest*k_Na
+        H_dict["enthalpogram"]["H_plot_1"] = H_conc_plot_1*self.Ttest*k_Na
         #print("ctot",H_dict["enthalpogram"]["c_tot"])
 
         #print("Hplot",H_dict["enthalpogram"]["H_plot"]/self.Ttest/k_Na)
@@ -684,6 +685,11 @@ if __name__ == '__main__':
     plt.legend(frameon=False)
     plt.savefig("EA-enthalpogram.jpg")
     #plt.show()
+    plt.figure(figsize=(8,6))
+    for T in Ttest:
+        plt.scatter(H_dict[T]["enthalpogram"]["c_tot"],H_dict[T]["enthalpogram"]["H_plot_1"],label = "{0}K".format(T))
+    plt.legend(frameon=False)
+    plt.savefig("EA-enthalpogram_without_stock.jpg")
     ### Plot H
     plt.figure(figsize=(8,6))
     for T in Ttest:
