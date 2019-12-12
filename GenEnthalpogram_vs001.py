@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-### Sodium Octanoate/Decanoate 
+### Sodium Octanoate/Decanoate
 
 # Dec 11, 2019
 # ∆G=-∆u(j-1)+g(j^(2/3)-1)+h(j^4-1)-εk-kTln(j!/(j-k)!k!)+∆G_correction
@@ -20,12 +20,12 @@ pd.set_option('use_inf_as_na', True)
 
 
 # def helpnote(argv):
-    
+
 #     ## Default values for the input arguments are defined here
 #     ## It can be printed out with help option -h
-    
+
 #     try:
-#         opts, args = getopt.getopt(argv,"h")   
+#         opts, args = getopt.getopt(argv,"h")
 #         for opt, arg in opts:
 #             if opt == "-h":
 #                 Note01 = """
@@ -47,14 +47,14 @@ pd.set_option('use_inf_as_na', True)
 #                 Maibaum1
 #                 False
 #                 310
-                
+
 #                 Or for user defined model:
 #                 ECtable.txt
 #                 UserDefined 1 1 1
 #                 True
 #                 310
 #                 2.2
-                
+
 
 #                 Note:
 #                 Line1: File name for cluster free energy profile. This file should include 4 columns, with no header.\n
@@ -63,21 +63,21 @@ pd.set_option('use_inf_as_na', True)
 
 #                 Line2: Specify a phenomenological function to fit the cluster free energy. Options are as follows.\n
 #                 Maibaum1/Maibaum2/Maibaum3/Quasi_droplet/UserDefined\n
-                
+
 #                 Line3: Temperature
 #                 Line4: stock solution concentration
 
 #                 The phenomenological models are derived from classical nucleation theory.\n
 #                 For Maibaum models, ∆u term is the bulk free energy of transfering a surfactant from solvent to micelle
 #                 ,g term is the surface free energy, h term corresponds structural limitations and is undetermined yet.
-#                 ε term accounts for the binding free energy to a micelle, the the factorial term accounts for 
+#                 ε term accounts for the binding free energy to a micelle, the the factorial term accounts for
 #                 the number of ways to distribute k counterions among j surfactant headgroups
 #                 ,∆G_correction accounts for other non-ideal effects. \n\n
 #                 Maibaum1\n
 #                 ∆G=-∆u(j-1)+g(j^(2/3)-1)+h(j^4-1)-εk-kTln(j!/(j-k)!/k!)+∆G_correction\n
 #                 Maibaum2\n
 #                 ∆G=-∆u(j-1)+g(j^(2/3)-1)+h(j^2-1)-εk-kTln(j!/(j-k)!/k!)+∆G_correction\n
-#                 Maibaum3 (Repulsion included)(!!!not included yet)\n 
+#                 Maibaum3 (Repulsion included)(!!!not included yet)\n
 #                 ∆G=-∆u(j-1)+g(j^(2/3)-1)+h(j^2-1)-εk+σ(1-k/j)^2*(j-1)^2-kTln(j!/(j-k)!k!)+∆G_correction\n
 #                 Quasi-droplet\n
 #                 ∆G=-∆u(j^(3/2)-1)+g(j-1)+h(j^2-1)-εk-kTln(j!/(j-k)!/k!)+∆G_correction\n
@@ -86,8 +86,8 @@ pd.set_option('use_inf_as_na', True)
 #                 ∆G=-∆u(j^a-1)+g(j^b-1)+h(j^c-1)-εk-kTln(j!/(j-k)!/k!)+∆G_correction\n
 #                 """
 #                 print(Note01)
-#     except: 
-#         print("run program") 
+#     except:
+#         print("run program")
 
 
 #### Handle input
@@ -104,7 +104,7 @@ def Model_parameter(fitmodel):
     else:
         print("Model Unidentified")
         sys.exit(2)
-        
+
     return (a,b,c)
 
 
@@ -126,8 +126,8 @@ def modelfuncy(deltaG,T_ref):
 
 def func_cp(deltaG,coef_fit,coef_power,T_ref):
     return (coef_fit[2]*(np.power(deltaG["x"],coef_power[0])-1)+coef_fit[5]*(np.power(deltaG["x"],coef_power[1])-1)+coef_fit[8]*(np.power(deltaG["x"],coef_power[2])-1)-coef_fit[11]*deltaG["y"])
-    
-    
+
+
 class LR_fit(object):
     def __init__(self,Ktable,a,b,c,FITTWO,Ttest,T_ref):
         self.Ktable = Ktable
@@ -139,20 +139,20 @@ class LR_fit(object):
         self.T_ref = T_ref
 
 
-    
+
     def __call__(self):
         print("RunFIT")
         fitdict={}
         deltaG = self.Ktable.copy()
-        
-       
-        deltaG["fac"] = np.log(factorial(deltaG["x"])/factorial(deltaG["x"]-deltaG["y"])/factorial(deltaG["y"]))                         
+
+
+        deltaG["fac"] = np.log(factorial(deltaG["x"])/factorial(deltaG["x"]-deltaG["y"])/factorial(deltaG["y"]))
         deltaG["G"]= -np.log(deltaG["K"])
-        
+
         deltaG["G_plusfac"] = deltaG["G"] +deltaG["fac"]
         deltaG.dropna(inplace=True)
-        
-        
+
+
 
         ###Compute coefficients
         coef=[self.a,self.b,self.c]
@@ -160,53 +160,113 @@ class LR_fit(object):
         deltaG[["B","B_d","B_dd"]]= deltaG.apply(modelfuncx,axis=1,result_type="expand",args=(coef[1],self.T_ref,))
         deltaG[["C","C_d","C_dd"]]= deltaG.apply(modelfuncx,axis=1,result_type="expand",args=(coef[2],self.T_ref,))
         deltaG[["D","D_d","D_dd"]]= deltaG.apply(modelfuncy,axis=1,result_type="expand",args=(self.T_ref,))
-    
-    
+
+
         #### Linear regression fitting
-        X=deltaG.loc[:,'A':'D_dd']
-        y= np.array(deltaG["G_plusfac"])
-        
-        
-        reg = linear_model.LinearRegression(fit_intercept=False).fit(X, y)
-        fitdict["coef"]=reg.coef_
-        
-        
-        ### Compute R-squared
-        yhat = reg.predict(X)
-        SS_Residual = sum((y-yhat)**2)
-        SS_Total = sum((y-np.mean(y))**2)
-        r_sqaured = 1 - (float(SS_Residual))/SS_Total
-        
-        fitdict["r_squared"]=r_sqaured
-
-        #### Compute deltaH
-        coef_fit = reg.coef_
-        
-        deltaG["H"] = deltaG.apply(funcH,axis=1,args=(coef_fit,coef,self.T_ref,))
-
-        ### calculate delta_cp
-        deltaG["cp"] = deltaG.apply(func_cp,axis=1,args=(coef_fit,coef,self.T_ref,))
-        #### Output deltaG
-        deltaG["yhat"]=yhat
-        deltaG["G_fit"]=yhat-deltaG["fac"]
-        deltaG["K"]= np.exp(-deltaG["G_fit"])
-        fitdict["deltaG"]=deltaG[["x","y","T","K","G_plusfac","yhat","G","G_fit","K","H","cp"]]
 
 
-        for T in self.Ttest:
-            #fitdict["H_ij",T] =np.array(deltaG.loc[(deltaG["T"]==T),"H"])       
-            fitdict["Koutput",T]= deltaG.loc[(deltaG["T"]==T),["x","y","K","H"]]
-            self.df=pd.DataFrame({'x':[0],'y':[1.0],'K':[1.0],'H':[0.0]})
-            fitdict["Koutput",T]=pd.concat([self.df,fitdict["Koutput",T]])
-            
 
-        print("FITDone")
-        ###Ouput fitdict Keys: "coef","r_sqaured","Koutput","deltaG"
-        return fitdict
-    
-    
-    
-         
+        if FITTWO == "True":
+            X_1 = deltaG.loc[(deltaG['x'] < 10),'A':'D_dd']
+            y_1 = np.array(deltaG.loc[(deltaG['x'] < 10),"G_plusfac"])
+            X_2 = deltaG.loc[(deltaG['x'] >= 10),'A':'D_dd']
+            y_2 = np.array(deltaG.loc[(deltaG['x'] >= 10),"G_plusfac"])
+
+            reg_1 = linear_model.LinearRegression(fit_intercept=False).fit(X_1, y_1)
+            reg_2 = linear_model.LinearRegression(fit_intercept=False).fit(X_2, y_2)
+
+            fitdict["coef1"] = reg_1.coef_
+            fitdict["coef2"] = reg_2.coef_
+            fitdict["coef"] = (reg_1.coef_,reg_2.coef_)
+            ### Compute R-squared
+            deltaG["yhat"] = 0
+            yhat_1 = reg_1.predict(X_1)
+            deltaG.loc[(deltaG['x']<10),"yhat"] = yhat_1
+            yhat_2 = reg_2.predict(X_2)
+            deltaG.loc[(deltaG['x']>=10),"yhat"] = yhat_2
+
+            SS_Residual = sum((y_1-yhat_1)**2) + sum((y_2-yhat_2)**2)
+            SS_Total = sum((y_2-np.mean(y_2))**2) + sum((y_2-np.mean(y_2))**2)
+            r_sqaured = 1 - (float(SS_Residual))/SS_Total
+
+            fitdict["r_squared"]=r_sqaured
+
+            #### Compute deltaH
+            deltaG["H"] = 0
+            coef_fit_1 = reg_1.coef_
+            deltaG.loc[(deltaG['x']<10),"H"] = deltaG.apply(funcH,axis=1,args=(coef_fit_1,coef,self.T_ref,))
+            coef_fit_2 = reg_2.coef_
+            deltaG.loc[(deltaG['x']>=10),"H"] = deltaG.apply(funcH,axis=1,args=(coef_fit_2,coef,self.T_ref,))
+
+            ### calculate delta_cp
+
+            deltaG.loc[(deltaG['x']<10),"cp"] = deltaG.apply(func_cp,axis=1,args=(coef_fit_1,coef,self.T_ref,))
+            deltaG.loc[(deltaG['x']>=10),"cp"] = deltaG.apply(func_cp,axis=1,args=(coef_fit_2,coef,self.T_ref,))
+
+            print(deltaG)
+            #### Output deltaG
+            #deltaG["yhat"]=yhat
+            deltaG["G_fit"]= deltaG["yhat"]-deltaG["fac"]
+            deltaG["K"]= np.exp(-deltaG["G_fit"])
+            fitdict["deltaG"]=deltaG[["x","y","T","K","G_plusfac","yhat","G","G_fit","K","H","cp"]]
+
+
+            for T in self.Ttest:
+                #fitdict["H_ij",T] =np.array(deltaG.loc[(deltaG["T"]==T),"H"])
+                fitdict["Koutput",T]= deltaG.loc[(deltaG["T"]==T),["x","y","K","H"]]
+                self.df=pd.DataFrame({'x':[0],'y':[1.0],'K':[1.0],'H':[0.0]})
+                fitdict["Koutput",T]=pd.concat([self.df,fitdict["Koutput",T]])
+
+
+            print("True FITDone")
+            ###Ouput fitdict Keys: "coef","r_sqaured","Koutput","deltaG"
+            return fitdict
+
+        else:
+            X=deltaG.loc[:,'A':'D_dd']
+            y= np.array(deltaG["G_plusfac"])
+            reg = linear_model.LinearRegression(fit_intercept=False).fit(X, y)
+            fitdict["coef"]=reg.coef_
+            ### Compute R-squared
+            yhat = reg.predict(X)
+
+            SS_Residual = sum((y-yhat)**2)
+            SS_Total = sum((y-np.mean(y))**2)
+            r_sqaured = 1 - (float(SS_Residual))/SS_Total
+
+            fitdict["r_squared"]=r_sqaured
+
+            #### Compute deltaH
+            coef_fit = reg.coef_
+
+            deltaG["H"] = deltaG.apply(funcH,axis=1,args=(coef_fit,coef,self.T_ref,))
+
+            ### calculate delta_cp
+            deltaG["cp"] = deltaG.apply(func_cp,axis=1,args=(coef_fit,coef,self.T_ref,))
+            #### Output deltaG
+            deltaG["yhat"]=yhat
+            deltaG["G_fit"]=yhat-deltaG["fac"]
+            deltaG["K"]= np.exp(-deltaG["G_fit"])
+            fitdict["deltaG"]=deltaG[["x","y","T","K","G_plusfac","yhat","G","G_fit","K","H","cp"]]
+
+
+            for T in self.Ttest:
+                #fitdict["H_ij",T] =np.array(deltaG.loc[(deltaG["T"]==T),"H"])
+                fitdict["Koutput",T]= deltaG.loc[(deltaG["T"]==T),["x","y","K","H"]]
+                self.df=pd.DataFrame({'x':[0],'y':[1.0],'K':[1.0],'H':[0.0]})
+                fitdict["Koutput",T]=pd.concat([self.df,fitdict["Koutput",T]])
+
+
+            print("False FITDone")
+            ###Ouput fitdict Keys: "coef","r_sqaured","Koutput","deltaG"
+            return fitdict
+
+
+
+
+
+
+
 class MicelleStats(object):
     def __init__(self,Molecule,Koutput,Ttest,cal_V=True):
         self.Molecule = Molecule
@@ -225,24 +285,24 @@ class MicelleStats(object):
         conctot_Ion_micelle = conctot_Ion - (Koutput["conc"][Koutput["x"]<7]*Koutput["y"][Koutput["x"]<7]).sum()
 
         return (conctot_S,conctot_Ion,conctot_S_micelle,conctot_Ion_micelle,conctot_M_micelle)
-        
+
     def __call__(self):
-        
+
         ### Output dictionary
         Micelledict={}
-        
-        
+
+
         ## Find the corresponding set of concentrations for the molecule
         Moleculefile = "INPUT-"+ self.Molecule + ".txt"
         #print(self.Moleculefile)
         Micelledict["conc"] = pd.read_csv(Moleculefile,header=None)
-        
+
         f = open(Moleculefile,"r")
         lines = f.read()
         conclist = [conc for conc in lines.split('\n') if lines]
         #print(self.conclist)
         del f
-        
+
         ## Iterate to find the corresponding monomer conc
         c_Stotlist=[]
         c_S1list=[]
@@ -260,7 +320,7 @@ class MicelleStats(object):
             val = 10*tolerance
             c_Ion1 = float(c_Ion1)
             c_S1 = c_Ion1
-            
+
             # not proper design
             c_Stot,c_Iontot,c_Stot_micelle,c_Iontot_micelle,c_M_micelle = self.cal_tot(self.Koutput,c_S1,c_Ion1)
             hibd = 0.0
@@ -296,7 +356,7 @@ class MicelleStats(object):
                                             Scount=c_Stot_micelle_list,
                                             Ioncount=c_Iontot_micelle_list)
 
-        
+
         ## Micelle Stats Calculation
         Micelledict["Micellestats_ave"] = Micelledict["Micellestats"].copy()
         # Calculate Mcount, Scount, Ioncount,
@@ -304,9 +364,9 @@ class MicelleStats(object):
         # Ioncount/Scount, unitcount
         # Mcount: # of micelles(i>=7)/V ; sum(c(i,j))
         # Scount: # OS in micelles(i>=7)/V ; sum(i*c(i,j))
-        # Ioncount: # Na in micelles(i>=7)/ V; 
+        # Ioncount: # Na in micelles(i>=7)/ V;
         # percentage
-        # Scount/c_Stot: fraction in micelles>=7: 
+        # Scount/c_Stot: fraction in micelles>=7:
         # Scount/Mcount: mean size
         # Ioncount/masscount: percent neutral
         # unitcount: sum(c(1,j)) from j=0 to max
@@ -318,7 +378,7 @@ class MicelleStats(object):
 
 
         Micelledict["stock"]=[Micelledict["Micellestats"].loc[N-1,"c_S1"],Micelledict["Micellestats"].loc[N-1,"c_Ion1"],Micelledict["Micellestats"].loc[N-1,"c_Stot"]]
-        
+
         if self.cal_V == True:
             ##Find StockConc
             StockConc = Micelledict["Micellestats"].loc[N-1,"c_Stot"]
@@ -326,22 +386,22 @@ class MicelleStats(object):
             ### Vnew in unit of L or kg
             Micelledict["Micellestats"]["Vnew"] = 0
             Micelledict["Micellestats"].loc[0,"Vnew"] = 0.000996
-            
+
 
             ### Vstock in unit of L or kg
             Micelledict["Micellestats"]["Vstock"] = 0
-            Micelledict["Micellestats"].loc[0,"Vstock"] = Micelledict["Micellestats"].loc[0,"Vnew"]*(Micelledict["Micellestats"].loc[1,"c_Stot"]-Micelledict["Micellestats"].loc[0,"c_Stot"])/(StockConc-Micelledict["Micellestats"].loc[1,"c_Stot"])    
+            Micelledict["Micellestats"].loc[0,"Vstock"] = Micelledict["Micellestats"].loc[0,"Vnew"]*(Micelledict["Micellestats"].loc[1,"c_Stot"]-Micelledict["Micellestats"].loc[0,"c_Stot"])/(StockConc-Micelledict["Micellestats"].loc[1,"c_Stot"])
             for i in range(1,N-2):
                 #print(i)
                 #print(self.Micelledict["Micellestats"].loc[i,"c_Ion1"])
                 Micelledict["Micellestats"].loc[i,"Vnew"] = Micelledict["Micellestats"].loc[i-1,"Vnew"]+ Micelledict["Micellestats"].loc[i-1,"Vstock"]
                 Micelledict["Micellestats"].loc[i,"Vstock"]=  Micelledict["Micellestats"].loc[i,"Vnew"]*(Micelledict["Micellestats"].loc[i+1,"c_Stot"]-Micelledict["Micellestats"].loc[i,"c_Stot"])/(StockConc-Micelledict["Micellestats"].loc[i+1,"c_Stot"])
             ### Find the stock solution c_S1 and c_Ion1
-            Micelledict["stock"]=[Micelledict["Micellestats"].loc[N-1,"c_S1"],Micelledict["Micellestats"].loc[N-1,"c_Ion1"],Micelledict["Micellestats"].loc[N-1,"c_Stot"]] 
+            Micelledict["stock"]=[Micelledict["Micellestats"].loc[N-1,"c_S1"],Micelledict["Micellestats"].loc[N-1,"c_Ion1"],Micelledict["Micellestats"].loc[N-1,"c_Stot"]]
             Micelledict["Micellestats"].drop(Micelledict["Micellestats"].tail(2).index,inplace=True)
         ## Output Micelledict keys: "conc","Micellestats","stock", "Micellestats_ave"
         return Micelledict
-        
+
 class Enthalpogram(object):
     def __init__(self,Koutput,Micelle_stats,MW,density_a,density_b,density_water,Ttest,stock_S1,stock_Ion1,StockConc):
         self.Koutput = Koutput
@@ -354,57 +414,57 @@ class Enthalpogram(object):
         self.stock_S1 = stock_S1
         self.stock_Ion1 = stock_Ion1
         self.StockConc= StockConc
-        
-        
+
+
     def __call__(self):
         ###Output dict
         H_dict={}
-        
+
         H_stock=[]
         H_conc=[]
-        n_surf = self.MicelleStats["Vstock"]*self.StockConc/0.602  
+        n_surf = self.MicelleStats["Vstock"]*self.StockConc/0.602
         #print(type(self.MicelleStats))
-        
-        ### Calculate stock solution H  
-        ##### Generate a list of <n_ij> 
+
+        ### Calculate stock solution H
+        ##### Generate a list of <n_ij>
         deltaG_conc = pd.DataFrame()
-        deltaG_conc = self.Koutput   
-        deltaG_conc["n_ij"]= deltaG_conc["K"]*np.power(self.stock_S1,deltaG_conc["x"])*np.power(self.stock_Ion1,deltaG_conc["y"])                                              
+        deltaG_conc = self.Koutput
+        deltaG_conc["n_ij"]= deltaG_conc["K"]*np.power(self.stock_S1,deltaG_conc["x"])*np.power(self.stock_Ion1,deltaG_conc["y"])
         deltaG_conc["sum_H_n"]=deltaG_conc["H"]*deltaG_conc["n_ij"]
-        
+
         #H_stock.append(H_stock_conc*V_stock/0.602)
-        H_stock_conc=deltaG_conc["sum_H_n"].sum()       
-        #print(H_stock_conc)                                                                            
-        
-        
+        H_stock_conc=deltaG_conc["sum_H_n"].sum()
+        #print(H_stock_conc)
+
+
         ### Calculate conc series H
         for i in range(0,self.MicelleStats.shape[0]):
             #print(i)
             deltaG_conc = pd.DataFrame()
             V = self.MicelleStats.loc[i,"Vnew"]
             V_stock = self.MicelleStats.loc[i,"Vstock"]
-   
-            ##### Generate a list of <n_ij> 
-            deltaG_conc = self.Koutput   
+
+            ##### Generate a list of <n_ij>
+            deltaG_conc = self.Koutput
             deltaG_conc["n_ij"]= deltaG_conc["K"]*np.power(self.MicelleStats.loc[i,"c_S1"],deltaG_conc["x"])\
                         *np.power(self.MicelleStats.loc[i,"c_Ion1"],deltaG_conc["y"])*V/0.602
             #if i < 5:
                 #print("i=",i)
                 #print(deltaG_conc)
             ##### Calculate H_ij * n_ij
-            ### Temporarily change H_1,1 
+            ### Temporarily change H_1,1
             #deltaG_conc.loc[(deltaG_conc["x"] < 5)& (deltaG_conc["y"] < 5),"H"]=0
             deltaG_conc["sum_H_n"]=deltaG_conc["H"]*deltaG_conc["n_ij"]
-    
+
             H_stock.append(H_stock_conc*V_stock/0.602)
             #print("V_stock",V_stock)
             #print(i,"H_stock",H_stock_conc*V_stock/0.602)
-        
+
             H_conc.append(deltaG_conc["sum_H_n"].sum())
             #print("H_conc",deltaG_conc["sum_H_n"].sum())
-            
+
         #print(V_stock)
-            
+
         ###Generate the enthalpogram
         #H_conc_plot = (np.array(H_conc[1:])-np.array(H_conc[:-1])-np.array(H_stock[:-1]))/n_surf[:-1]
         H_conc_plot = (np.array(H_conc[1:])-np.array(H_conc[:-1]))/n_surf[:-1]
@@ -414,13 +474,13 @@ class Enthalpogram(object):
         #print("H_stock",H_stock)
         #print("n_surf",n_surf)
         #print("plot",H_conc_plot)
-    
-        
+
+
         #print("shape_3",self.MicelleStats)
         self.MicelleStats["c_tot_mol_kg"]=self.MicelleStats["c_Stot"]/0.602/(1+self.MW*self.MicelleStats["c_Stot"]/0.602)
         self.MicelleStats["density"]=self.density_a*np.power(self.MicelleStats["c_tot_mol_kg"],2)+density_b*self.MicelleStats["c_tot_mol_kg"] + density_water
         self.MicelleStats["c_tot"] = self.MicelleStats["c_tot_mol_kg"]*self.MicelleStats["density"]
-        
+
 
         k_Na = 1.38064852*10**(-23)*6.02*10**(23)/1000
         ##df1
@@ -439,7 +499,7 @@ class Enthalpogram(object):
         #print(H_dict["enthalpogram"]["c_tot"] )
         H_dict["enthalpogram"]["H_plot"] = H_conc_plot*self.Ttest*k_Na
         #print("ctot",H_dict["enthalpogram"]["c_tot"])
-    
+
         #print("Hplot",H_dict["enthalpogram"]["H_plot"]/self.Ttest/k_Na)
         ## Output H_dict keys: "enthalpogram","H_conc"
         return H_dict
@@ -447,13 +507,13 @@ class Enthalpogram(object):
 
 
 
-        
+
 
 if __name__ == '__main__':
-    
+
     ### Print help note if needed
     #helpnote(sys.argv[1:])
-    
+
     ### Read input
     f = open("INPUT-setup.txt","r")
     lines = f.read()
@@ -462,8 +522,8 @@ if __name__ == '__main__':
     T_ref = float(T_ref)
     #StockConc = float(StockConc)
     print(Molecule)
-    
-    ### Find MW and density coefficient for Molecule 
+
+    ### Find MW and density coefficient for Molecule
     density_water = 0.997043 ##298.15K
     if Molecule == "Octanoate":
         MW = 0.16619 # in kg/mol
@@ -473,28 +533,28 @@ if __name__ == '__main__':
         MW = 0.19425
         density_a = -0.037690
         density_b = 0.032614
-    
-    
+
+
     # Transform input K table into dataframes
     Ktable=pd.read_csv(CFEFILE, delimiter="\t|,",header=None,skiprows=0,engine='python')
     Ktable.columns=["x","y","T","K"]
     Ttest = np.array(Ktable["T"].unique()).astype(np.float)
     print("Ttest=",Ttest)
     ncountT = len(Ttest)
-    
+
     # Assign models based on input
     a,b,c = Model_parameter(FITMODEL)
-    
+
     ### Fit to phenomenological model
     LR_fit = LR_fit(Ktable,a,b,c,FITTWO,Ttest,T_ref)
     LR_fit_dict = LR_fit.__call__()
     Koutput={}
     for T in Ttest:
         Koutput[T] = LR_fit_dict["Koutput",T]
-    
+
     #### Print LR fitting parameters
     ###Ouput fitdict Keys: "coef","r_sqaured","Koutput","deltaG"
-  
+
     with open("EA-LR_setup.txt",'w') as f_set:
         ## Use writelines
         f_set.write("coef ={0}\nr_squared ={1}".format(LR_fit_dict["coef"],LR_fit_dict["r_squared"]))
@@ -551,11 +611,11 @@ if __name__ == '__main__':
 
     for T in Ttest:
         #Micellestats = MicelleStats(Molecule,Koutput[T],T)
-        MicelleStats_dict = MicelleStats(Molecule,Koutput[T],T).__call__()   
-        Micelle_stats[T] = MicelleStats_dict["Micellestats"] 
+        MicelleStats_dict = MicelleStats(Molecule,Koutput[T],T).__call__()
+        Micelle_stats[T] = MicelleStats_dict["Micellestats"]
         MicelleStats_ave[T] = MicelleStats_dict["Micellestats_ave"]
         stock_S1,stock_Ion1,StockConc = MicelleStats_dict["stock"]
-        
+
         ## Output Micelledict keys: "conc","Micellestats","stock"
         #### Print micelle stats parameters
         with open("EA-MicelleStats_{0}K.txt".format(T),'w') as f_MS:
@@ -569,7 +629,7 @@ if __name__ == '__main__':
         f_MS_ave.close()
         del f_MS_ave
 
-            
+
 
         CalEnthalpogram = Enthalpogram(Koutput[T],Micelle_stats[T],MW,density_a,density_b,density_water,T,stock_S1,stock_Ion1,StockConc)
         H_dict[T] = CalEnthalpogram.__call__()
@@ -583,8 +643,8 @@ if __name__ == '__main__':
     #  c_Ion1=c_Ion1list,Mcount=c_M_micelle_list,
     #   Scount=c_Stot_micelle_list,
     #   Ioncount=c_Iontot_micelle_list)
-        #     Micelledict["Micellestats_ave"]["fraction_of_Micelles"] 
-        # Micelledict["Micellestats_ave"]["mean size"] 
+        #     Micelledict["Micellestats_ave"]["fraction_of_Micelles"]
+        # Micelledict["Micellestats_ave"]["mean size"]
         # Micelledict["Micellestats_ave"]["percent neutral"]
 
     #Set up plot grid
@@ -612,12 +672,12 @@ if __name__ == '__main__':
     # for T in Ttest:
     #     CalEnthalpogram = Enthalpogram(Koutput[T],Micelle_stats[T],MW,density_a,density_b,density_water,T,stock_S1,stock_Ion1,StockConc)
     #     H_dict[T] = CalEnthalpogram.__call__()
-    
+
     # ## Output H_dict keys: "enthalpogram","H_conc"
     # ## not print H_conc for now
     # ### Print output and plot data
     #     H_dict[T]["enthalpogram"].to_csv("EA_enthalpogram_{0}K.txt".format(T), sep='\t',index=True)
-    
+
     plt.figure(figsize=(8,6))
     for T in Ttest:
         plt.scatter(H_dict[T]["enthalpogram"]["c_tot"],H_dict[T]["enthalpogram"]["H_plot"],label = "{0}K".format(T))
@@ -650,8 +710,8 @@ if __name__ == '__main__':
         plt.scatter(H_dict[T]["H_conc"]["c_tot"],H_dict[T]["H_conc"]["Hconc_stock"],label = "{0}K".format(T))
     plt.legend(frameon=False)
     plt.savefig("EA-enthalpogram_Hstock.jpg")
-    
-    ###Plot micelle stats from PEACH 
+
+    ###Plot micelle stats from PEACH
     ### Generate micelle statistics
     MicelleStats_ave_Peach={}
     Micelle_stats_Peach={}
@@ -659,15 +719,15 @@ if __name__ == '__main__':
     for T in Ttest:
         cal_V = False
         ### Temporary insert(0,1,1)
-    
+
         df_1 = pd.DataFrame({'x':[0],'y':[1.0],'K':[1.0]})
         df_2 = Ktable.loc[(Ktable["T"]==T),['x','y','K']]
         df_3 = pd.concat([df_1,df_2])
-        MicelleStats_dict_Peach = MicelleStats(Molecule,df_3,T,cal_V).__call__()   
-        Micelle_stats_Peach[T] = MicelleStats_dict_Peach["Micellestats"] 
+        MicelleStats_dict_Peach = MicelleStats(Molecule,df_3,T,cal_V).__call__()
+        Micelle_stats_Peach[T] = MicelleStats_dict_Peach["Micellestats"]
         MicelleStats_ave_Peach[T] = MicelleStats_dict_Peach["Micellestats_ave"]
         stock_S1,stock_Ion1,StockConc = MicelleStats_dict_Peach["stock"]
-        
+
         ## Output Micelledict keys: "conc","Micellestats","stock"
         #### Print micelle stats parameters
         with open("PEACH-MicelleStats_{0}K.txt".format(T),'w') as f_MS:
@@ -699,13 +759,6 @@ if __name__ == '__main__':
         ax.set_xlabel("tot Surfactant Conc(mol/L)")
         ax.legend(frameon=False)
     fig.savefig("PEACH-micelle.jpg")
-    
+
 
     ###To add:  print cp, micelle cutoff defined, two piece fit, compare small cluster, Baysian optimization, cluster analysis code
-
- 
-          
-            
-        
-          
-
